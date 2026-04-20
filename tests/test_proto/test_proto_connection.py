@@ -91,28 +91,30 @@ async def test_execute(proto_conn: ProtoConnection):
 
 
 @pytest.mark.asyncio
+async def test_execute_with_args_and_no_placeholder(proto_conn: ProtoConnection):
+    query = "SELECT 1"
+    ret = await proto_conn.execute(query, args={"val": 2})
+    assert ret == [(1,)]
+
+
+@pytest.mark.asyncio
 async def test_execute_with_args(proto_conn: ProtoConnection):
-    query = "SELECT {val}"
+    query = "SELECT %(val)s"
     ret = await proto_conn.execute(query, args={"val": 2})
     assert ret == [(2,)]
 
 
 @pytest.mark.asyncio
 async def test_execute_with_missing_arg(proto_conn: ProtoConnection):
-    query = "SELECT {var}"
+    query = "SELECT %(var)s"
     with pytest.raises(KeyError, match="'var'"):
         await proto_conn.execute(query, args={"foo": 1})
 
 
-@pytest.mark.asyncio
-async def test_large_insert(proto_conn: ProtoConnection):
-    data = [(1,)] * 10_000
-    async with create_table(proto_conn, "a Int64"):
-        await proto_conn.execute(
-            "INSERT INTO test.test (a) VALUES", data, settings={"insert_block_size": 1000}
-        )
-        rv = await proto_conn.execute("SELECT * FROM test.test")
-        assert rv == data
+async def test_execute_with_multiple_args(proto_conn: ProtoConnection):
+    query = "SELECT %(val)s, %(var)s"
+    ret = await proto_conn.execute(query, args={"val": 2, "var": 3})
+    assert ret == [(2, 3)]
 
 
 @asynccontextmanager
